@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html style="height: 100%">
+<head>
+<meta charset="utf-8">
+    <script src="../../static/js/jquery-3.3.1.min.js"></script>
+    <script src="../../static/js/bootstrap.min.js"></script>
+    <script src="../../static/js/d3.v3.min.js"></script>
+    <script src="../../static/js/jsnetworkx.js"></script>
+</head>
+<body style="height: 100%; margin: 0">
+<div id="canvas"></div>
+<script type="text/javascript">
+    var G = new jsnx.DiGraph();
+
+    G.addNodesFrom([1,2,3,4,5,9], {color: '#0064C7'});
+    G.addEdgesFrom([[1,9], [9,1]],{color: 'green'});
+    G.addEdgesFrom([[2,9], [3,9]], {color: 'blue'});
+
+    jsnx.draw(G, {
+        element: '#canvas',
+        withLabels: true,
+        nodeStyle: {
+            fill: function(d) {
+                return d.data.color;
+            }
+        },
+        labelStyle: {fill: 'white'},
+        stickyDrag: true,
+        edgeStyle: {
+           fill: function(d) {
+            return d.data.color;
+        }
+        }
+    });
+</script>
+</body>
+
+</html>

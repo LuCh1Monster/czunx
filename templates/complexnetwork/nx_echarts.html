@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+
+{% block content %}
+
+{% endblock %}
+
+{% block javascript %}
+<script>
+ // nodes：各个节点，links:各节点之间的联系
+ // category与配置项中的legend，categories相对应
+ var nodes = [[15, 0], [-50, 10], [-56.5, 20], [-46.5, 30], [-22.1, 40]];
+ var links = [];
+ // isHighlight ：是否有节点是高亮的，
+ // clickLastNode：最近点击的一次节点
+ var isHighlight = false, clickLastNode;
+ // 如果后台返回来的nodes节点关系中，有每个节点的,x,y属性时，不用做以下操作。
+ // 这里是重要的拖拽实现的坐标
+ nodes = nodes.map(item => {
+     item.x = Math.random()*1000;
+     item.y = Math.random()*1000; return item;
+ });
+ // 关系图的配置项
+ var option = {
+     color: ['gray'],// 图例的颜色
+     legend:{'123'}, // 图例的名字
+     series:[{ id: 'a', // 这个图例的ID
+     type: 'graph', // 表示的是 关系图
+     layout: 'none', // 一定是none没有布局，后面指定了，否则无法拖拽
+     force:{}, // 力导向图
+     data: nodes,
+     links: links,
+     roam: true,
+     draggable: false, // 这里必须设置成false，否则拖拽的时候，会有偏移
+     label:{}, // 表示关系图的提示字的样式
+     lineStyle:{}, // 节点之间线的样式
+     edgeLabel:{ // 标签的样式，就是节点线上面文字的样式
+         normal: { show: true,
+             formatter:function (e) { return e.data.name// 线上的字为nodes中的name属性值
+             },
+         }
+         },
+     edgeSymbol: ['','arrow'], // 节点之间的箭头
+    }]
+ };
+// 将echarts组件实例初始化在DIV里面
+var myChart = echarts.init(document.getElementById('main'));
+// setOption(),可以实现动态的数据，加载。如果数据有变化时调用这条语句，echarts会自动识别哪些数据有变化后自动更新
+myChart.setOption(option);
+// ****************** 拖拽 **************************
+// 因为echarts中的关系图的每个节点都没有拖拽功能，我们就为他加上拖拽功能。用 graphic组件，在每个点上面，覆盖一个隐藏的可拖拽的圆点。
+myChart.setOption({
+    // 用 map 方法遍历 data 的每项，为每项生成一个圆点。
+    graphic: echarts.util.map(nodes,
+        function (dataItem, dataIndex) {
+            return {
+                type: 'circle', // 'circle' 表示这个 graphic element 的类型是圆点。
+                shape: { // 圆点的半径。
+                    r: 15 },
+        // 用 transform 的方式对圆点进行定位。position: [x, y] 表示将圆点平移到 [x, y] 位置。
+        // 这里使用了 convertToPixel 这个 API 来得到每个圆点的位置,前面是标识哪个图形
+            position: myChart.convertToPixel({seriesIndex: 0}, [item.x,item.y]),
+            invisible: true, // 这个属性让圆点不可见（但是不影响他响应鼠标事件）
+            draggable: true, // 这个属性让圆点可以被拖拽
+            // 把 z 值设得比较大，表示这个圆点在最上方，能覆盖住已有的折线图的圆点。
+            z: 100,
+            // 此圆点的拖拽的响应事件，在拖拽过程中会不断被触发。下面介绍详情。
+            // 这里使用了 echarts.util.curry 这个帮助方法，意思是生成一个与 onPointDragging，
+            // 功能一样的新的函数，只不过第一个参数永远为此时传入的 dataIndex 的值。
+            ondrag: echarts.util.curry(onPointDragging, dataIndex),
+            onclick: echarts.util.curry(circleClick,dataIndex),
+            };
+    })
+});
+ // 点击事件，点击节点出现高亮，这里的动态变量就是点击节点时的那个dataIndex
+ // 初始化isHighlight：false表示没有高亮节点
+ function circleClick(dataIndex) {
+     if(!isHighlight){
+         myChart.dispatchAction({
+             type: 'focusNodeAdjacency',
+             seriesId: option.series[0].id,
+             dataIndex: dataIndex });
+         isHighlight = true; clickLastNode = dataIndex; }
+ }
+ // 拖拽节点的函数
+ function onPointDragging(dataIndex) {
+    var tmpPos = myChart.convertFromPixel({seriesIndex: 0}, this.position);
+    nodes[dataIndex].x = tmpPos[0];
+    nodes[dataIndex].y = tmpPos[1];
+    // 重新渲染各个节点的值
+    myChart.setOption({ series: [{ id: 'a', data: nodes }] });
+    // 更新每个拖拽节点的位置，和记住刚才高亮的节点
+    updatePosition();
+    rememberHighlight(clickLastNode);
+}
+ // 当节点位置改变时，就要更新拖拽节点的位置
+ function updatePosition() {
+     myChart.setOption({
+         graphic: echarts.util.map(nodes, function (item, dataIndex) {
+             var tmpPos=myChart.convertToPixel({'seriesIndex': 0},[item.x,item.y]);
+             return { position: tmpPos };
+         })
+     });
+ }
+ // 记住刚点击的节点的高亮位置
+ function rememberHighlight(clickLastNode){
+     myChart.dispatchAction({
+         type: 'focusNodeAdjacency',
+         seriesId: option.series[0].id,
+         dataIndex: clickLastNode });
+ }
+ // 监听关系图图是否发生了缩放行为
+ myChart.on('graphRoam', function () {
+     updatePosition();
+     rememberHighlight(clickLastNode);
+ });
+ // 点击空白区域使节点重置
+ //他能触发整个canvas画布的点击事件，并返回触发当前位置的信息
+ myChart.getZr().on('click',function(params){});
+ myChart.getZr().on('click',function (params) {
+     if(params.cancelBubble === false && params.target === undefined){
+         updatePosition(); isHighlight = false; clickLastNode = null;
+     }
+ })
+</script>
+{% endblock %}
+

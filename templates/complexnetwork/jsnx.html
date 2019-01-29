@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Complex Network{% endblock %}
+
+{% block content %}
+<div class="container">
+    {% if errMsg %}
+    <div class="alert alert-danger">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+    {{ errMsg }}
+    </div>
+    {% endif %}
+
+    {% if warMsg %}
+    <div class="alert alert-warning">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+    {{ warMsg }}
+    </div>
+    {% endif %}
+
+    <form role="form" class="form-inline" action="." method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+      <div class="form-group">
+        <label for="chineseCharacter1">汉字1&nbsp;&nbsp;</label>
+        <input type="text" class="form-control" id="chineseCharacter1" name="chineseCharacter1"
+               placeholder="请输入第1汉字" value="{{ chineseCharacter1 }}">
+      </div>&nbsp;&nbsp;&nbsp;
+      <div class="form-group">
+        <label for="chineseCharacter2">汉字2&nbsp;&nbsp;</label>
+        <input type="text" class="form-control" id="chineseCharacter2" name="chineseCharacter2"
+            placeholder="请输入第2汉字" value="{{ chineseCharacter2 }}">
+      </div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+      <div class="checkbox">
+        <label>
+          <input type="checkbox" id="displayNetwork" name="displayNetwork" checked disabled>&nbsp;&nbsp;显示网络图&nbsp;&nbsp;
+        </label>
+      </div>&nbsp;&nbsp;
+      <div class="checkbox">
+        <label>
+          <input type="checkbox" id="displaySampleNetwork"
+                 name="displaySampleNetwork" {{ displaySampleNetwork }}>&nbsp;&nbsp;显示样例图&nbsp;&nbsp;
+        </label>
+      </div>&nbsp;
+      <button type="submit" class="btn btn-default">查询</button>
+    </form>
+</div>
+<br>
+
+<div id="canvas" style="text-align: -webkit-center"></div>
+
+<br>
+<div class="container">
+    <table class="table table-hover">
+    <tr>
+        <th>网络节点数</th>
+        <th>网络边数</th>
+        <th>起点</th>
+        <th>终点</th>
+        <th>最短路径长度</th>
+        <th>最短路径</th>
+    </tr>
+    <tr>
+        <td>{{ nodesNum|safe }}</td>
+        <td>{{ edgesNum|safe }}</td>
+        <td>{{ source|safe }}</td>
+        <td>{{ target|safe }}</td>
+        <td>{{ shortestPathLength|safe }}</td>
+        <td>{{ shortestPath|safe }}</td>
+    </tr>
+    </table>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    var G = new jsnx.DiGraph();
+    var color = d3.scale.category20();
+
+    G.addNodesFrom({{ node1|safe }}, {color: 'Crimsn', group: 1});
+    G.addNodesFrom({{ node2|safe }}, {color: 'DarkGreen', group: 2});
+    G.addEdgesFrom({{ links|safe }}, {color: 'Orange'});
+    G.addPath({{ path|safe }}, {color: 'DarkSlateBlue'});
+
+    jsnx.draw(G, {
+        layoutAttr: {
+            charge: -700,
+            linkDistance: 80,
+
+        },
+        element: '#canvas',
+        withLabels: true,
+        nodeStyle: {
+            fill: function(d) {
+                return d.data.color;
+            },
+            stroke: 'none'
+        },
+        edgeStyle: {
+           fill: function(d) {
+            return d.data.color;
+        },
+            stroke: 'none'
+        },
+        labelStyle: {fill: 'white'},
+        stickyDrag: true,
+        height: 600,
+        width: 800
+    });
+</script>
+{% endblock %}
+
+
+
